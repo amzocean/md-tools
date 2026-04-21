@@ -58,7 +58,8 @@ MD Tools is a **zero-backend**, **privacy-first** web application for working wi
 | Upload .md file | ✅ | ✅ |
 | Drag & drop | ✅ | ✅ |
 | Live preview | ✅ | ✅ |
-| PDF export | ❌ | ✅ |
+| PDF export | ✅ | ✅ |
+| Auto-hide hero | ✅ | ✅ |
 | Theme color | Blue/Indigo | Emerald/Teal |
 | Support pages | 2 articles | 3 articles |
 
@@ -151,7 +152,7 @@ All site-specific content lives in **`src/config/sites.ts`** — a single `Recor
 | `domain` | Production domain name (used in canonical URLs, sitemaps, JSON-LD) |
 | `name` | Brand name shown in header, footer, structured data |
 | `tagline` | Short tagline for footer |
-| `features.pdfExport` | Whether to show "Download PDF" button and PDF-related content |
+| `features.pdfExport` | Whether to show "Download PDF" button and PDF-related content (enabled on both sites) |
 | `seo.title` | Default `<title>` tag |
 | `seo.description` | Default meta description |
 | `seo.keywords` | Meta keywords array |
@@ -172,6 +173,7 @@ The codebase deliberately splits components between server and client:
 |-----------|------|-----|
 | `Hero` | **Server** | H1 and subheadline must be indexable by crawlers |
 | `HeroCTA` | **Client** | Scroll-to-tool click handler needs `onClick` |
+| `HomeContent` | **Client** | Wraps Hero + MarkdownTool; manages hero auto-hide state |
 | `SEOContent` | **Server** | Rich prose content for SEO — crawlers see everything |
 | `ArticleLayout` | **Server** | Support page wrapper — static content |
 | `Header` | **Client** | Hamburger menu toggle needs `useState` |
@@ -198,7 +200,7 @@ html2pdf.js captures #markdown-preview DOM element
 html2canvas renders the element to a canvas at 2x scale
     │
     ▼
-jsPDF converts canvas to A4 PDF with 10mm margins
+jsPDF converts canvas to A4 PDF with custom margins
     │
     ▼
 Browser triggers file download: markdown-document.pdf
@@ -207,14 +209,16 @@ Browser triggers file download: markdown-document.pdf
 Configuration used:
 ```typescript
 {
-  margin: [10, 10, 10, 10],     // mm margins (top, right, bottom, left)
+  margin: [12, 10, 15, 10],     // mm margins (top, right, bottom, left)
   filename: "markdown-document.pdf",
   image: { type: "jpeg", quality: 0.98 },
-  html2canvas: { scale: 2, useCORS: true },
+  html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
   jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-  pagebreak: { mode: ["avoid-all", "css", "legacy"] }
+  pagebreak: { mode: ["css", "legacy"] }
 }
 ```
+
+The element is cloned with 20px bottom padding before capture to prevent last-line clipping at page boundaries.
 
 ---
 
@@ -273,7 +277,7 @@ Cached for 24 hours via `Cache-Control: public, max-age=86400`.
 
 Content that needs to be indexed by search engines is rendered as **server components**:
 
-- `Hero.tsx` — server component so H1, subheadline are in initial HTML
+- `Hero.tsx` — server component so H1, subheadline are in initial HTML (auto-hides when content is loaded via `HomeContent` wrapper)
 - `SEOContent.tsx` — rich prose section with internal links, how-to steps, feature grid
 - Support pages — server-rendered articles with cross-links
 
@@ -343,11 +347,12 @@ md-tools/
     │   ├── SiteProvider.tsx          # React Context: provides SiteConfig to client tree
     │   ├── Header.tsx               # Sticky header with desktop nav + mobile hamburger
     │   ├── Footer.tsx               # 3-column footer with nav links
+    │   ├── HomeContent.tsx          # ⭐ Client wrapper: Hero + MarkdownTool with auto-hide
     │   ├── Hero.tsx                 # Server component: gradient hero with H1
     │   ├── HeroCTA.tsx              # Client component: scroll-to-tool CTA button
     │   ├── MarkdownTool.tsx         # ⭐ Main tool: editor, file upload, drag-drop, tabs
     │   ├── MarkdownPreview.tsx      # Markdown renderer (react-markdown + remark-gfm)
-    │   ├── PdfExportButton.tsx      # PDF download button (converter only)
+    │   ├── PdfExportButton.tsx      # PDF download button (both sites)
     │   ├── SEOContent.tsx           # Server component: rich prose for search engines
     │   ├── FAQ.tsx                  # FAQ accordion section
     │   └── ArticleLayout.tsx        # Wrapper layout for support pages
@@ -376,16 +381,17 @@ md-tools/
 | `src/config/sites.ts` | 155 | Single source of truth for both sites. Exports `getSiteConfig(siteId)` and the full `sites` record. Contains all SEO metadata, hero content, FAQ items, theme classes, feature flags. |
 | `src/components/SiteProvider.tsx` | 23 | React Context wrapping the app. `SiteProvider` accepts a `config` prop (set in layout.tsx). `useSiteConfig()` hook for client components. Throws if used outside provider. |
 | `src/app/layout.tsx` | 86 | Root layout. Sets viewport, generates metadata, injects WebApplication JSON-LD, wraps children in SiteProvider. |
-| `src/app/page.tsx` | 120 | Homepage. Composes Header → Hero → MarkdownTool → SEOContent → FAQ → Footer. Injects FAQPage, BreadcrumbList, and HowTo JSON-LD schemas. |
+| `src/app/page.tsx` | 118 | Homepage. Composes Header → HomeContent (Hero + MarkdownTool) → SEOContent → FAQ → Footer. Injects FAQPage, BreadcrumbList, and HowTo JSON-LD schemas. |
 
 ### Component Files
 
 | File | Type | Role |
 |------|------|------|
-| `src/components/MarkdownTool.tsx` | Client | Main interactive tool. Manages markdown state, file validation (5MB limit, .md/.markdown/.txt), drag-drop with visual feedback, Edit/Preview mobile tabs, toolbar with Upload/Sample/Clear buttons, conditional PDF export button. |
+| `src/components/HomeContent.tsx` | Client | Wraps Hero and MarkdownTool together. Manages `heroVisible` state — hero auto-hides when user loads content (file upload, drag-drop, or Load Sample). Hero reappears on Clear. |
+| `src/components/MarkdownTool.tsx` | Client | Main interactive tool. Manages markdown state, file validation (5MB limit, .md/.markdown/.txt), drag-drop with visual feedback, Edit/Preview mobile tabs, toolbar with Upload/Sample/Clear buttons, PDF export button. Accepts `onContentLoaded` callback for hero auto-hide. |
 | `src/components/MarkdownPreview.tsx` | Client | Wraps `react-markdown` with `remark-gfm` plugin. Applies Tailwind Typography prose classes with dark-theme code block overrides. Renders into `#markdown-preview` div for PDF capture. |
-| `src/components/PdfExportButton.tsx` | Client | Dynamic-imports html2pdf.js on click. Shows spinner during export. Error handling with alert fallback. Captures `#markdown-preview` element. |
-| `src/components/Hero.tsx` | Server | Gradient hero section. Accepts `config` prop (not context — server components can't use hooks). Renders H1 and subheadline for crawler indexing. Delegates CTA to HeroCTA. |
+| `src/components/PdfExportButton.tsx` | Client | Dynamic-imports html2pdf.js on click. Shows spinner during export. Error handling with alert fallback. Captures `#markdown-preview` element. Prominent button with shadow for visibility. |
+| `src/components/Hero.tsx` | Server | Gradient hero section. Accepts `config` prop (not context — server components can't use hooks). Renders H1 and subheadline for crawler indexing. Delegates CTA to HeroCTA. Auto-hidden by HomeContent when content is loaded. |
 | `src/components/HeroCTA.tsx` | Client | Extracted from Hero. Single button with `scrollIntoView` to `#tool` section. Needed as client component because `onClick` is not available in server components. |
 | `src/components/SEOContent.tsx` | Server | Rich prose section with domain-specific content (viewer vs converter). Internal links to support pages. How-to steps, feature checklist grid. All server-rendered for SEO. |
 | `src/components/Header.tsx` | Client | Sticky header. Desktop: horizontal nav links. Mobile: hamburger icon toggles dropdown menu with `useState`. Nav links are config-aware (PDF guide only on converter). |
