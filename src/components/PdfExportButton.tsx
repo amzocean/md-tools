@@ -16,15 +16,19 @@ export default function PdfExportButton({ disabled }: PdfExportButtonProps) {
     setExporting(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
+      // Clone the element to add padding so content isn't clipped at page bottom
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.paddingBottom = "20px";
+
       await html2pdf()
-        .from(element)
+        .from(clone)
         .set({
-          margin: [10, 10, 10, 10],
+          margin: [12, 10, 15, 10],
           filename: "markdown-document.pdf",
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
+          html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+          pagebreak: { mode: ["css", "legacy"] },
         })
         .save();
     } catch (err) {
