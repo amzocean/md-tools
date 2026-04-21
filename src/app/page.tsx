@@ -2,8 +2,7 @@ import { headers } from "next/headers";
 import { getSiteConfig } from "@/config/sites";
 import type { SiteId } from "@/types";
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import MarkdownTool from "@/components/MarkdownTool";
+import HomeContent from "@/components/HomeContent";
 import SEOContent from "@/components/SEOContent";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
@@ -109,8 +108,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
       />
       <Header />
-      <Hero config={config} />
-      <MarkdownTool />
+      <HomeContent config={config} />
       <SEOContent config={config} />
       <FAQ />
       <Footer />

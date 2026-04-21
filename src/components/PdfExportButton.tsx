@@ -43,12 +43,12 @@ export default function PdfExportButton({ disabled }: PdfExportButtonProps) {
     <button
       onClick={handleExport}
       disabled={disabled || exporting}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      className="inline-flex items-center gap-2 px-5 py-3 rounded-lg text-base font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
     >
       {exporting ? (
         <>
           <svg
-            className="animate-spin h-4 w-4"
+            className="animate-spin h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -71,7 +71,7 @@ export default function PdfExportButton({ disabled }: PdfExportButtonProps) {
       ) : (
         <>
           <svg
-            className="w-4 h-4"
+            className="w-5 h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

@@ -9,13 +9,26 @@ import { sampleMarkdown } from "@/config/sample";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_EXTENSIONS = [".md", ".markdown", ".txt"];
 
-export default function MarkdownTool() {
+interface MarkdownToolProps {
+  onContentLoaded?: () => void;
+}
+
+export default function MarkdownTool({ onContentLoaded }: MarkdownToolProps) {
   const config = useSiteConfig();
   const [markdown, setMarkdown] = useState("");
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasNotified = useRef(false);
+
+  // Notify parent when content first appears
+  const notifyContentLoaded = useCallback(() => {
+    if (!hasNotified.current && onContentLoaded) {
+      hasNotified.current = true;
+      onContentLoaded();
+    }
+  }, [onContentLoaded]);
 
   const clearError = () => setError(null);
 
@@ -36,6 +49,7 @@ export default function MarkdownTool() {
       if (typeof text === "string") {
         setMarkdown(text);
         setActiveTab("preview");
+        notifyContentLoaded();
       }
     };
     reader.onerror = () => setError("Failed to read file. Please try again.");
@@ -69,12 +83,14 @@ export default function MarkdownTool() {
     setMarkdown("");
     setError(null);
     setActiveTab("edit");
+    hasNotified.current = false;
   };
 
   const handleLoadSample = () => {
     setMarkdown(sampleMarkdown);
     setActiveTab("preview");
     clearError();
+    notifyContentLoaded();
   };
 
   return (
