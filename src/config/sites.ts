@@ -7,7 +7,7 @@ const sites: Record<SiteId, SiteConfig> = {
     name: "ViewMDFile",
     tagline: "Instantly preview Markdown files online",
     features: {
-      pdfExport: false,
+      pdfExport: true,
     },
     seo: {
       title: "View MD File Online — Free Markdown Viewer | ViewMDFile.com",
