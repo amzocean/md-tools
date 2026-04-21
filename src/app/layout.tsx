@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getSiteConfig } from "@/config/sites";
 import { SiteProvider } from "@/components/SiteProvider";
 import type { SiteId } from "@/types";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -79,6 +80,7 @@ export default function RootLayout({
         <SiteProvider config={config}>
           <div className="flex-1">{children}</div>
         </SiteProvider>
+        <Analytics />
       </body>
     </html>
   );
